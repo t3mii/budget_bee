@@ -1,6 +1,3 @@
-# ---------- Input helpers with validation ---------- #
-# ---------- Fixed Fake Bank Data (no randomness) ---------- #
-
 FAKE_BANK = [
     {"amount": 12.75, "merchant": "Chipotle",    "category": "Food",          "date": "2025-11-01"},
     {"amount": 8.50,  "merchant": "Subway",      "category": "Food",          "date": "2025-11-03"},
@@ -59,7 +56,6 @@ def get_yes_no(prompt):
         print("  ❌ Please type 'y' or 'n'.")
 
 
-# ---------- Core classes ---------- #
 
 class Login:
     
@@ -101,9 +97,7 @@ class User(Login):
 
 class Budget:
     def __init__(self):
-        # category -> limit
         self.limits = {}
-        # category -> total spent
         self.spending = {}
 
     def set_limit(self, category, amount):
@@ -131,7 +125,7 @@ class Survey(User):
         super().__init__(username, password, email)
         self.monthly_budget = float(monthly_budget)
         self.expenses = self._init_expense_structure()
-        self.extra_transactions = []  # list of {"amount": float, "description": str}
+        self.extra_transactions = [] 
         self.bee_score = None
 
     def _init_expense_structure(self):
