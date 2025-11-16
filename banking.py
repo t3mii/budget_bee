@@ -1,5 +1,31 @@
-import fake_bankdb
 # ---------- Input helpers with validation ---------- #
+# ---------- Fixed Fake Bank Data (no randomness) ---------- #
+
+FAKE_BANK = [
+    {"amount": 12.75, "merchant": "Chipotle",    "category": "Food",          "date": "2025-11-01"},
+    {"amount": 8.50,  "merchant": "Subway",      "category": "Food",          "date": "2025-11-03"},
+    {"amount": 5.25,  "merchant": "Starbucks",   "category": "Food",          "date": "2025-11-04"},
+
+    {"amount": 45.99, "merchant": "Target",      "category": "Shopping",      "date": "2025-11-02"},
+    {"amount": 27.49, "merchant": "Amazon",      "category": "Shopping",      "date": "2025-11-05"},
+    {"amount": 60.00, "merchant": "Walmart",     "category": "Shopping",      "date": "2025-11-07"},
+
+    {"amount": 18.20, "merchant": "Uber",        "category": "Transportation","date": "2025-11-03"},
+    {"amount": 14.75, "merchant": "Lyft",        "category": "Transportation","date": "2025-11-06"},
+    {"amount": 35.00, "merchant": "Shell Gas",   "category": "Transportation","date": "2025-11-09"},
+
+    {"amount": 65.00, "merchant": "Verizon",     "category": "Bills",         "date": "2025-11-01"},
+    {"amount": 90.00, "merchant": "Comcast",     "category": "Bills",         "date": "2025-11-01"},
+    {"amount": 120.00,"merchant": "Electric Co", "category": "Bills",         "date": "2025-11-08"},
+
+    {"amount": 10.99, "merchant": "Spotify",     "category": "Entertainment", "date": "2025-11-02"},
+    {"amount": 15.49, "merchant": "Netflix",     "category": "Entertainment", "date": "2025-11-04"},
+    {"amount": 22.00, "merchant": "AMC Theaters","category": "Entertainment", "date": "2025-11-10"},
+
+    {"amount": 30.00, "merchant": "Gym",         "category": "Other",         "date": "2025-11-05"},
+    {"amount": 12.00, "merchant": "Misc Store",  "category": "Other",         "date": "2025-11-06"},
+]
+
 
 def get_float_input(prompt, allow_empty=False):
     """
@@ -16,7 +42,7 @@ def get_float_input(prompt, allow_empty=False):
         try:
             return float(value)
         except ValueError:
-            print("  ❌ Invalid input. Please enter a number.")
+            print(" Invalid input. Please enter a number.")
 
 
 def get_yes_no(prompt):
@@ -215,11 +241,17 @@ class Survey(User):
     def initialize_bee_score(self):
         """
         Call this after initial survey is filled and monthly_budget is set.
+        Includes existing extra transactions (e.g. fake bank history).
         """
         base_spent, category_totals = self.calculate_totals()
-        score = self.compute_budget_bee_score(base_spent, self.monthly_budget)
+
+        # Include all extra transactions (e.g. from FAKE_BANK)
+        extra_spent = sum(t["amount"] for t in self.extra_transactions)
+        current_total = base_spent + extra_spent
+
+        score = self.compute_budget_bee_score(current_total, self.monthly_budget)
         self.bee_score = score
-        return score, base_spent, category_totals
+        return score, current_total, category_totals
 
     def add_transaction(self, amount, description=""):
         """
@@ -249,41 +281,42 @@ class Survey(User):
 
 # ---------------- Example test run (CLI) ---------------- #
 
-if __name__ == "__main__":
-    # Create a survey user (budget will be asked later)
-    s = Survey(username="samira", password="abc123", email="samira@example.com", monthly_budget=0.0)
 
-    # (Optional) validate login, etc.
-    s.validate_credentials("samira", "abc123")
-    if not s.login():
-        print("Login failed.")
-    else:
-        print("Login successful.\n")
+if __name__ == "__main__":
+
+    # Ask the user for login info (ANY login is accepted)
+    username = input("Enter your username: ")
+    password = input("Enter your password: ")
+
+    # Create the Survey user with the provided login info
+    s = Survey(username=username, password=password, email=None, monthly_budget=0.0)
+
+    # Automatically accept login
+    s.is_logged_in = True
+    print("\nLogin successful.\n")
+
+    # Load the fake bank transactions into the account automatically
+    for tx in FAKE_BANK:
+        s.extra_transactions.append({
+            "amount": tx["amount"],
+            "description": f"{tx['merchant']} ({tx['category']}) on {tx['date']}"
+        })
 
     # Collect initial survey answers in CLI mode
     s.collect_expenses_cli()
 
     # Ask for monthly budget with validation
-    s.monthly_budget = get_float_input("\nWhat is your TOTAL monthly budget? ₹")
+    s.monthly_budget = get_float_input("\nWhat is your TOTAL monthly budget: $")
 
-    # Initialize Budget Bee score from the survey
+    # Initialize Budget Bee score from the survey + fake bank
+    # Calculate the final Budget Bee score (the only score)
     score, total_spent, cat_totals = s.initialize_bee_score()
-    print("\nInitial totals:")
+
+    print("\nYour monthly spending summary:")
     for cat, amt in cat_totals.items():
         print(f"  {cat}: ₹{amt:.2f}")
-    print(f"Total spent from survey: ₹{total_spent:.2f}")
-    print(f"Initial Budget Bee score: {score}\n")
 
-    # Add a few extra transactions and see the score change
-    while get_yes_no("Add a new transaction? (y/n): "):
-        amt = get_float_input("  Amount spent: ")
-        desc = input("  Description (optional): ").strip()
-        try:
-            new_score, current_total = s.add_transaction(amt, desc)
-            print(f"  Updated Budget Bee score: {new_score}")
-            print(f"  Total spent so far this month: ₹{current_total:.2f}\n")
-        except ValueError as e:
-            print("  Error:", e)
+    print(f"\nTotal spent this month (survey + bank transactions): ${total_spent:.2f}")
+    print(f"Your Budget Bee Score: {score}\n")
 
-    print("\nFinal Budget Bee score:", s.bee_score)
     s.logout()
